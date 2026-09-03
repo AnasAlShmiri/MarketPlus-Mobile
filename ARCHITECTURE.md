@@ -1,8 +1,8 @@
-# Zimmati.Mobile Architecture
+# MarketPlus.Mobile Architecture
 
 ## هدف النسخة
 
-تطبيق Flutter عربي RTL للكاشير والمدير، متصل مباشرة بـ `Zimmati.API` ويغطي متطلبات W8:
+تطبيق Flutter عربي RTL للكاشير والمدير، متصل مباشرة بـ `MarketPlus.API` ويغطي متطلبات W8:
 
 - Architecture
 - Screens
@@ -24,7 +24,7 @@ Repositories
     ↓
 ApiClient (Dio + PersistCookieJar)
     ↓
-ASP.NET Core Zimmati.API
+ASP.NET Core MarketPlus.API
     ↓
 Application Services / EF Core / SQL Server
 ```

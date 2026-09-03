@@ -20,14 +20,14 @@ import 'screens/sales_history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'state/app_session.dart';
 
-class ZimmatiApp extends StatefulWidget {
-  const ZimmatiApp({super.key, required this.session});
+class MarketPlusApp extends StatefulWidget {
+  const MarketPlusApp({super.key, required this.session});
   final AppSession session;
   @override
-  State<ZimmatiApp> createState() => _ZimmatiAppState();
+  State<MarketPlusApp> createState() => _MarketPlusAppState();
 }
 
-class _ZimmatiAppState extends State<ZimmatiApp> {
+class _MarketPlusAppState extends State<MarketPlusApp> {
   late final GoRouter router = GoRouter(
     initialLocation: '/login',
     refreshListenable: widget.session,
@@ -79,7 +79,7 @@ class _ZimmatiAppState extends State<ZimmatiApp> {
   Widget build(BuildContext context) => MaterialApp.router(
         debugShowCheckedModeBanner: false,
         title: 'ماركت بلس',
-        theme: buildZimmatiTheme(),
+        theme: buildMarketPlusTheme(),
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: const [

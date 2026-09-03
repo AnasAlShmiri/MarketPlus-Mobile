@@ -8,8 +8,8 @@ import '../data/repositories.dart';
 class ProductCatalog extends ChangeNotifier {
   ProductCatalog(this.repository, this.preferences);
 
-  static const _cacheKey = 'zimmati.products.cache.v1';
-  static const _cacheTimeKey = 'zimmati.products.cache.updatedAt.v1';
+  static const _cacheKey = 'marketplus.products.cache.v1';
+  static const _cacheTimeKey = 'marketplus.products.cache.updatedAt.v1';
 
   final ProductSource repository;
   final SharedPreferences preferences;

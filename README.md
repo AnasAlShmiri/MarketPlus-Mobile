@@ -1,6 +1,6 @@
-# Zimmati.Mobile — Flutter W8 High-Fidelity
+# MarketPlus.Mobile — Flutter W8 High-Fidelity
 
-تطبيق الموبايل الرسمي لمشروع **ماركت بلس**، مبني كنسخة POS حقيقية مرتبطة بـ `Zimmati.API` وليس Demo ببيانات وهمية.
+تطبيق الموبايل الرسمي لمشروع **ماركت بلس**، مبني كنسخة POS حقيقية مرتبطة بـ `MarketPlus.API` وليس Demo ببيانات وهمية.
 
 يغطي متطلبات الدكتور الأربعة مباشرة:
 
@@ -58,7 +58,7 @@ GET /api/products/barcode/{barcode}
 ## التشغيل لأول مرة
 
 ```powershell
-cd Zimmati.Mobile
+cd MarketPlus.Mobile
 .\tool\bootstrap.ps1
 ```
 
@@ -74,13 +74,13 @@ cd Zimmati.Mobile
 
 ```powershell
 cd ..
-dotnet run --project .\Zimmati.API\Zimmati.API.csproj --urls http://0.0.0.0:5000
+dotnet run --project .\MarketPlus.API\MarketPlus.API.csproj --urls http://0.0.0.0:5000
 ```
 
 ### Android Emulator
 
 ```powershell
-cd Zimmati.Mobile
+cd MarketPlus.Mobile
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000
 ```
 

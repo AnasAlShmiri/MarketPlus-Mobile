@@ -5,7 +5,7 @@
 }
 
 android {
-    namespace = "com.zimmati.zimmati_mobile"
+    namespace = "com.marketplus.marketplus_mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.zimmati.zimmati_mobile"
+        applicationId = "com.marketplus.marketplus_mobile"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

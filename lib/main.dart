@@ -49,7 +49,7 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: offlineQueue),
         ChangeNotifierProvider.value(value: session),
       ],
-      child: ZimmatiApp(session: session),
+      child: MarketPlusApp(session: session),
     ),
   );
 }

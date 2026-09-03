@@ -26,7 +26,7 @@ class ApiClient {
         receiveTimeout: const Duration(seconds: 8),
         headers: const {
           'Accept': 'application/json',
-          'X-Zimmati-Client': 'flutter-mobile',
+          'X-MarketPlus-Client': 'flutter-mobile',
         },
         validateStatus: (status) => status != null && status < 600,
       ),
@@ -56,7 +56,7 @@ class ApiClient {
     final support = await getApplicationSupportDirectory();
     final cookieJar = PersistCookieJar(
       ignoreExpires: false,
-      storage: FileStorage('${support.path}/zimmati_cookies/'),
+      storage: FileStorage('${support.path}/marketplus_cookies/'),
     );
     return ApiClient._(
       baseUrl: baseUrl ?? const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:5000'),
@@ -97,7 +97,7 @@ class ApiClient {
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       throw ApiException(
-        status == null ? 'تعذر الاتصال بالخادم. تحقق من الشبكة وتشغيل Zimmati.API.' : _fallbackMessage(status),
+        status == null ? 'تعذر الاتصال بالخادم. تحقق من الشبكة وتشغيل MarketPlus.API.' : _fallbackMessage(status),
         statusCode: status,
       );
     }

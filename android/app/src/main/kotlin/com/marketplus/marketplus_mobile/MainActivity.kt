@@ -1,4 +1,4 @@
-package com.zimmati.zimmati_mobile
+package com.marketplus.marketplus_mobile
 
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -9,7 +9,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val feedbackChannel = "zimmati/feedback"
+    private val feedbackChannel = "marketplus/feedback"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

@@ -67,7 +67,7 @@ abstract final class ZShadow {
   ];
 }
 
-ThemeData buildZimmatiTheme() {
+ThemeData buildMarketPlusTheme() {
   const scheme = ColorScheme.light(
     primary: ZColors.green,
     onPrimary: Colors.white,

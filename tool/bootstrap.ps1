@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
 Write-Host "[1/6] Creating Flutter platform files..." -ForegroundColor Cyan
-flutter create . --project-name zimmati_mobile --org com.zimmati --platforms=android,ios
+flutter create . --project-name marketplus_mobile --org com.marketplus --platforms=android,ios
 
 Write-Host "[2/6] Removing Flutter's generated sample widget test..." -ForegroundColor Cyan
 $generatedWidgetTest = "test/widget_test.dart"
@@ -30,7 +30,7 @@ if (Test-Path $iosPlist) {
     if ($plist -notmatch 'NSCameraUsageDescription') {
         $cameraEntry = @'
     <key>NSCameraUsageDescription</key>
-    <string>يستخدم ذمتي الكاميرا لمسح باركود المنتجات أثناء البيع.</string>
+    <string>يستخدم ماركت بلس الكاميرا لمسح باركود المنتجات أثناء البيع.</string>
 '@
         $plist = $plist -replace '</dict>', "$cameraEntry`n</dict>"
         Set-Content -Path $iosPlist -Value $plist -Encoding UTF8
@@ -44,7 +44,7 @@ Write-Host "[6/6] Running static analysis..." -ForegroundColor Cyan
 flutter analyze
 
 Write-Host ""
-Write-Host "Zimmati.Mobile bootstrap completed." -ForegroundColor Green
+Write-Host "MarketPlus.Mobile bootstrap completed." -ForegroundColor Green
 Write-Host "Android Emulator:" -ForegroundColor Yellow
 Write-Host "  flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000"
 Write-Host "Physical phone (replace with your PC LAN IP):" -ForegroundColor Yellow

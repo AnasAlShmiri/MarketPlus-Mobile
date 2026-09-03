@@ -19,7 +19,7 @@ class SaleScreen extends StatefulWidget {
 
 class _SaleScreenState extends State<SaleScreen>
     with SingleTickerProviderStateMixin {
-  static const MethodChannel _feedbackChannel = MethodChannel('zimmati/feedback');
+  static const MethodChannel _feedbackChannel = MethodChannel('marketplus/feedback');
 
   final barcodeController = TextEditingController();
   final Map<String, DateTime> _lastSeen = <String, DateTime>{};

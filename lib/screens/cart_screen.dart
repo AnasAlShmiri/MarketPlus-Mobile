@@ -19,7 +19,7 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  static const _savedCustomersKey = 'zimmati.saved-customers.v1';
+  static const _savedCustomersKey = 'marketplus.saved-customers.v1';
   static const _maxSavedCustomers = 120;
 
   final formKey = GlobalKey<FormState>();

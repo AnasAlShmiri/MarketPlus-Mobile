@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zimmati_mobile/data/models.dart';
-import 'package:zimmati_mobile/data/repositories.dart';
-import 'package:zimmati_mobile/state/product_catalog.dart';
+import 'package:marketplus_mobile/data/models.dart';
+import 'package:marketplus_mobile/data/repositories.dart';
+import 'package:marketplus_mobile/state/product_catalog.dart';
 
 class FakeProductSource implements ProductSource {
   FakeProductSource(this.items);

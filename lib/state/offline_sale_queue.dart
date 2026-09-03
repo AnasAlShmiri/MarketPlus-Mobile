@@ -9,7 +9,7 @@ import '../data/repositories.dart';
 class OfflineSaleQueue extends ChangeNotifier {
   OfflineSaleQueue(this._repository, this._preferences);
 
-  static const _storageKey = 'zimmati.pending-sales.v1';
+  static const _storageKey = 'marketplus.pending-sales.v1';
   final InvoiceRepository _repository;
   final SharedPreferences _preferences;
   final List<PendingSale> _items = [];
