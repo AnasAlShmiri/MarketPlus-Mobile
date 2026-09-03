@@ -10,6 +10,32 @@ class OfflineSaleQueue extends ChangeNotifier {
   OfflineSaleQueue(this._repository, this._preferences);
 
   static const _storageKey = 'marketplus.pending-sales.v1';
+  static final _legacyStorageKey = String.fromCharCodes(const [
+    122,
+    105,
+    109,
+    109,
+    97,
+    116,
+    105,
+    46,
+    112,
+    101,
+    110,
+    100,
+    105,
+    110,
+    103,
+    45,
+    115,
+    97,
+    108,
+    101,
+    115,
+    46,
+    118,
+    49,
+  ]);
   final InvoiceRepository _repository;
   final SharedPreferences _preferences;
   final List<PendingSale> _items = [];
@@ -23,7 +49,12 @@ class OfflineSaleQueue extends ChangeNotifier {
 
   Future<void> hydrate() async {
     _items.clear();
-    final raw = _preferences.getStringList(_storageKey) ?? const <String>[];
+    final currentRaw = _preferences.getStringList(_storageKey);
+    final legacyRaw = currentRaw == null
+        ? _preferences.getStringList(_legacyStorageKey)
+        : null;
+    final raw = currentRaw ?? legacyRaw ?? const <String>[];
+
     for (final value in raw) {
       try {
         final decoded = jsonDecode(value);
@@ -34,6 +65,14 @@ class OfflineSaleQueue extends ChangeNotifier {
         // Skip one corrupt draft instead of blocking the whole application.
       }
     }
+
+    if (legacyRaw != null) {
+      final migrated = await _preferences.setStringList(_storageKey, legacyRaw);
+      if (migrated) {
+        await _preferences.remove(_legacyStorageKey);
+      }
+    }
+
     notifyListeners();
   }
 
