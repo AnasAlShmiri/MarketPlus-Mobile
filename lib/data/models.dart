@@ -146,6 +146,7 @@ class Invoice {
   bool get isPaid => status == 2;
 
   factory Invoice.fromJson(Map<String, dynamic> json) {
+    final id = (json['id'] as num? ?? 0).toInt();
     final total = (json['totalAmount'] as num? ?? 0).toDouble();
     final paymentType = (json['paymentType'] as num? ?? 0).toInt();
     final status = (json['status'] as num? ?? 0).toInt();
@@ -154,8 +155,8 @@ class Invoice {
     final fallbackRemaining = paymentType == 2 && status != 2 && status != 4 ? (total - paid).clamp(0, total).toDouble() : 0.0;
 
     return Invoice(
-      id: (json['id'] as num? ?? 0).toInt(),
-      number: '${json['invoiceNumber'] ?? ''}',
+      id: id,
+      number: compactInvoiceNumber(id, '${json['invoiceNumber'] ?? ''}'),
       customerName: json['customerName']?.toString(),
       customerPhone: json['customerPhone']?.toString(),
       subtotal: (json['subtotalAmount'] as num? ?? 0).toDouble(),
@@ -172,6 +173,9 @@ class Invoice {
     );
   }
 }
+
+String compactInvoiceNumber(int id, String fallback) =>
+    id > 0 ? 'INV-$id' : fallback.trim();
 
 class CustomerSummary {
   const CustomerSummary({
