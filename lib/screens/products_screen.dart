@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
+import '../core/product_image.dart';
 import '../data/models.dart';
 import '../state/product_catalog.dart';
 
@@ -233,7 +234,7 @@ class _ProductCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _ProductImage(
+                ProductImage(
                   imageUrl: product.imageUrl,
                   width: 64,
                   height: 64,
@@ -362,12 +363,13 @@ class _ProductDetailsSheet extends StatelessWidget {
               child: Container(
                 height: 190,
                 color: ZColors.surfaceSoft,
-                child: _ProductImage(
+                child: ProductImage(
                   imageUrl: product.imageUrl,
                   width: double.infinity,
                   height: 190,
                   radius: 0,
                   iconSize: 48,
+                  profile: ProductImageProfile.detail,
                 ),
               ),
             ),
@@ -517,87 +519,6 @@ class _DetailRow extends StatelessWidget {
           ],
         ),
       );
-}
-
-class _ProductImage extends StatelessWidget {
-  const _ProductImage({
-    required this.imageUrl,
-    required this.width,
-    required this.height,
-    required this.radius,
-    this.iconSize = 28,
-  });
-
-  final String? imageUrl;
-  final double width;
-  final double height;
-  final double radius;
-  final double iconSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final resolved = _resolveImageUrl(imageUrl);
-    final fallback = Container(
-      width: width,
-      height: height,
-      color: ZColors.surfaceContainer,
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.inventory_2_outlined,
-        size: iconSize,
-        color: ZColors.greenMid,
-      ),
-    );
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: resolved == null
-          ? fallback
-          : Image.network(
-              resolved,
-              width: width,
-              height: height,
-              fit: BoxFit.cover,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (_, __, ___) => fallback,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return Container(
-                  width: width,
-                  height: height,
-                  color: ZColors.surfaceSoft,
-                  alignment: Alignment.center,
-                  child: const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
-
-String? _resolveImageUrl(String? raw) {
-  final value = raw?.trim();
-  if (value == null || value.isEmpty) return null;
-
-  final parsed = Uri.tryParse(value);
-  if (parsed != null && parsed.hasScheme) return value;
-
-  const base = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5000',
-  );
-  final baseUri = Uri.tryParse(base);
-  if (baseUri == null) return value;
-
-  try {
-    return baseUri.resolve(value).toString();
-  } catch (_) {
-    return value;
-  }
 }
 
 class _StockVisual {
