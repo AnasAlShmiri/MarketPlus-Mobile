@@ -1,11 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
+import '../core/whatsapp_message_template.dart';
 import '../state/app_session.dart';
 import '../state/product_catalog.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _whatsappTemplate = WhatsAppMessageTemplate.defaultTemplate;
+  bool _loadingTemplate = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWhatsAppTemplate();
+  }
+
+  Future<void> _loadWhatsAppTemplate() async {
+    try {
+      final template = await WhatsAppMessageTemplate.load();
+      if (!mounted) return;
+      setState(() {
+        _whatsappTemplate = template;
+        _loadingTemplate = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingTemplate = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +72,26 @@ class SettingsScreen extends StatelessWidget {
         _StoreStatusCard(catalog: catalog),
         const SizedBox(height: 26),
         const Text(
+          'المشاركة',
+          style: TextStyle(
+            fontSize: 15.5,
+            fontWeight: FontWeight.w900,
+            color: ZColors.green,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'خصص النص الذي يفتح مع واتساب عند إرسال فاتورة للعميل.',
+          style: TextStyle(fontSize: 10.8, color: ZColors.subtle),
+        ),
+        const SizedBox(height: 10),
+        _WhatsAppTemplateCard(
+          template: _whatsappTemplate,
+          loading: _loadingTemplate,
+          onTap: _loadingTemplate ? null : _editWhatsAppTemplate,
+        ),
+        const SizedBox(height: 26),
+        const Text(
           'الجلسة',
           style: TextStyle(
             fontSize: 15.5,
@@ -58,6 +107,138 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: 10),
         _LogoutCard(onTap: () => _confirmLogout(context)),
       ],
+    );
+  }
+
+  Future<void> _editWhatsAppTemplate() async {
+    final controller = TextEditingController(text: _whatsappTemplate);
+    String? validationError;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.chat_rounded, color: ZColors.green),
+              SizedBox(width: 10),
+              Expanded(child: Text('قالب رسالة واتساب')),
+            ],
+          ),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'اكتب الرسالة كما تريدها. اضغط على أي متغير لإضافته في موضع المؤشر.',
+                    style: TextStyle(fontSize: 11.5, color: ZColors.muted),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: controller,
+                    minLines: 8,
+                    maxLines: 14,
+                    maxLength: WhatsAppMessageTemplate.maxLength,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: InputDecoration(
+                      hintText: WhatsAppMessageTemplate.defaultTemplate,
+                      errorText: validationError,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'المتغيرات المتاحة',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
+                      color: ZColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: WhatsAppMessageTemplate.placeholders
+                        .map(
+                          (token) => ActionChip(
+                            label: Text(token),
+                            onPressed: () => _insertToken(controller, token),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '{debt} يضيف المدفوع والمتبقي تلقائيًا للفواتير الآجلة فقط.',
+                    style: TextStyle(fontSize: 10.3, color: ZColors.subtle),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                controller.text = WhatsAppMessageTemplate.defaultTemplate;
+                controller.selection = TextSelection.collapsed(
+                  offset: controller.text.length,
+                );
+                setDialogState(() => validationError = null);
+              },
+              child: const Text('إعادة الافتراضي'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                final normalized = WhatsAppMessageTemplate.normalize(
+                  controller.text,
+                );
+                final error = WhatsAppMessageTemplate.validate(normalized);
+                if (error != null) {
+                  setDialogState(() => validationError = error);
+                  return;
+                }
+                Navigator.pop(dialogContext, normalized);
+              },
+              icon: const Icon(Icons.save_rounded),
+              label: const Text('حفظ القالب'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    controller.dispose();
+    if (selected == null || !mounted) return;
+
+    try {
+      await WhatsAppMessageTemplate.save(selected);
+      if (!mounted) return;
+      setState(() => _whatsappTemplate = selected);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ قالب رسالة واتساب.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حفظ قالب رسالة واتساب الآن.')),
+      );
+    }
+  }
+
+  static void _insertToken(TextEditingController controller, String token) {
+    final selection = controller.selection;
+    final start = selection.isValid ? selection.start : controller.text.length;
+    final end = selection.isValid ? selection.end : controller.text.length;
+    final text = controller.text.replaceRange(start, end, token);
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: start + token.length),
     );
   }
 
@@ -93,6 +274,88 @@ class SettingsScreen extends StatelessWidget {
       await context.read<AppSession>().logout();
     }
   }
+}
+
+class _WhatsAppTemplateCard extends StatelessWidget {
+  const _WhatsAppTemplateCard({
+    required this.template,
+    required this.loading,
+    required this.onTap,
+  });
+
+  final String template;
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFD8E7E2)),
+              boxShadow: ZShadow.card,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: ZColors.successSoft,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: loading
+                      ? const Padding(
+                          padding: EdgeInsets.all(13),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(
+                          Icons.chat_rounded,
+                          color: ZColors.success,
+                          size: 21,
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'قالب رسالة واتساب',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w900,
+                          color: ZColors.text,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        loading ? 'جارٍ تحميل القالب...' : template,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10.8,
+                          height: 1.45,
+                          color: ZColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit_rounded, color: ZColors.green),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class _ProfileHero extends StatelessWidget {
