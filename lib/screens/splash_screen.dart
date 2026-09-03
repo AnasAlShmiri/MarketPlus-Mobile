@@ -1,19 +1,20 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/app_theme.dart';
+import '../state/app_session.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
     required this.onboardingCompleted,
-    required this.authenticated,
+    required this.session,
+    required this.startupFuture,
   });
 
   final bool onboardingCompleted;
-  final bool authenticated;
+  final AppSession session;
+  final Future<void> startupFuture;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -24,7 +25,6 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _controller;
   late final Animation<double> _fade;
   late final Animation<double> _scale;
-  Timer? _navigationTimer;
 
   @override
   void initState() {
@@ -38,20 +38,25 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
     _controller.forward();
+    _continueStartup();
+  }
 
-    _navigationTimer = Timer(const Duration(milliseconds: 1350), () {
-      if (!mounted) return;
-      if (!widget.onboardingCompleted) {
-        context.go('/onboarding');
-      } else {
-        context.go(widget.authenticated ? '/home' : '/login');
-      }
-    });
+  Future<void> _continueStartup() async {
+    await Future.wait<void>([
+      Future<void>.delayed(const Duration(milliseconds: 1350)),
+      widget.startupFuture,
+    ]);
+
+    if (!mounted) return;
+    if (!widget.onboardingCompleted) {
+      context.go('/onboarding');
+    } else {
+      context.go(widget.session.authenticated ? '/home' : '/login');
+    }
   }
 
   @override
   void dispose() {
-    _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
