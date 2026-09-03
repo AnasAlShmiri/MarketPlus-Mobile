@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/app_theme.dart';
+import '../core/whatsapp_message_template.dart';
 import '../data/models.dart';
 import '../data/repositories.dart';
 import '../state/app_session.dart';
@@ -37,31 +38,63 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     await next;
   }
 
-  String message(Invoice invoice) {
+  Future<String> message(Invoice invoice) async {
+    final template = await WhatsAppMessageTemplate.load();
     final items = invoice.items
-        .map((item) => '• ${item.name} × ${item.quantity} — ${item.total.toStringAsFixed(0)} ر.ي')
+        .map(
+          (item) =>
+              '• ${item.name} × ${item.quantity} — ${item.total.toStringAsFixed(0)} ر.ي',
+        )
         .join('\n');
-    final date = DateFormat('yyyy/MM/dd – HH:mm').format(invoice.createdAt.toLocal());
-    return 'مرحبًا ${invoice.customerName ?? 'عزيزنا'}،\n'
-        'فاتورتكم ${invoice.number}\n'
-        'التاريخ: $date\n\n'
-        '$items\n\n'
-        'الإجمالي: ${invoice.total.toStringAsFixed(0)} ر.ي\n'
-        '${invoice.paymentType == 2 ? 'طريقة الدفع: آجل' : 'طريقة الدفع: نقدي'}\n'
-        'شكرًا لتعاملكم معنا.';
+    final date = DateFormat(
+      'yyyy/MM/dd – HH:mm',
+    ).format(invoice.createdAt.toLocal());
+    final customerName = (invoice.customerName ?? '').trim();
+    final phone = (invoice.customerPhone ?? '').trim();
+    final payment = invoice.paymentType == 2 ? 'آجل' : 'نقدي';
+    final paid = invoice.paidAmount.toStringAsFixed(0);
+    final remaining = invoice.remainingAmount.toStringAsFixed(0);
+    final debt = invoice.paymentType == 2
+        ? 'المدفوع: $paid ر.ي\nالمتبقي: $remaining ر.ي'
+        : '';
+
+    return WhatsAppMessageTemplate.render(template, {
+      'customer': customerName.isEmpty ? 'عزيزنا' : customerName,
+      'phone': phone,
+      'invoice': invoice.number,
+      'date': date,
+      'items': items,
+      'total': invoice.total.toStringAsFixed(0),
+      'currency': 'ر.ي',
+      'payment': payment,
+      'paid': paid,
+      'remaining': remaining,
+      'debt': debt,
+    });
   }
 
   Future<void> sendWhatsApp(Invoice invoice) async {
     try {
       final phone = invoice.customerPhone;
       if (phone == null || phone.isEmpty) return;
-      final url = await context.read<WhatsAppRepository>().buildLink(phone, message(invoice));
-      final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      final renderedMessage = await message(invoice);
+      final url = await context.read<WhatsAppRepository>().buildLink(
+            phone,
+            renderedMessage,
+          );
+      final opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
       if (!opened && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تعذر فتح واتساب على الجهاز.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر فتح واتساب على الجهاز.')),
+        );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
     }
   }
 
@@ -74,7 +107,9 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
         fontFallback: [fonts.fallback],
       ),
     );
-    final localDate = DateFormat('yyyy/MM/dd • HH:mm').format(invoice.createdAt.toLocal());
+    final localDate = DateFormat(
+      'yyyy/MM/dd • HH:mm',
+    ).format(invoice.createdAt.toLocal());
 
     document.addPage(
       pw.MultiPage(
@@ -83,7 +118,10 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
         textDirection: pw.TextDirection.rtl,
         header: (_) => pw.Column(
           children: [
-            pw.Text('ماركت بلس | Market Plus', style: _pdfStyle(fonts, bold: true, size: 22)),
+            pw.Text(
+              'ماركت بلس | Market Plus',
+              style: _pdfStyle(fonts, bold: true, size: 22),
+            ),
             pw.SizedBox(height: 4),
             pw.Text('فاتورة بيع', style: _pdfStyle(fonts, size: 12)),
             pw.Divider(),
@@ -96,7 +134,10 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
               pw.Text('رقم الفاتورة', style: _pdfStyle(fonts)),
               pw.Directionality(
                 textDirection: pw.TextDirection.ltr,
-                child: pw.Text(invoice.number, style: _pdfStyle(fonts, size: 9)),
+                child: pw.Text(
+                  invoice.number,
+                  style: _pdfStyle(fonts, size: 9),
+                ),
               ),
             ],
           ),
@@ -138,9 +179,17 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
             ],
           ),
           pw.SizedBox(height: 18),
-          _pdfRow(fonts, 'المجموع', '${invoice.subtotal.toStringAsFixed(0)} ر.ي'),
+          _pdfRow(
+            fonts,
+            'المجموع',
+            '${invoice.subtotal.toStringAsFixed(0)} ر.ي',
+          ),
           if (invoice.tax > 0)
-            _pdfRow(fonts, 'الضريبة', '${invoice.tax.toStringAsFixed(0)} ر.ي'),
+            _pdfRow(
+              fonts,
+              'الضريبة',
+              '${invoice.tax.toStringAsFixed(0)} ر.ي',
+            ),
           pw.Divider(),
           _pdfRow(
             fonts,
@@ -151,7 +200,11 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
           ),
           if (invoice.paymentType == 2) ...[
             pw.SizedBox(height: 6),
-            _pdfRow(fonts, 'المدفوع', '${invoice.paidAmount.toStringAsFixed(0)} ر.ي'),
+            _pdfRow(
+              fonts,
+              'المدفوع',
+              '${invoice.paidAmount.toStringAsFixed(0)} ر.ي',
+            ),
             _pdfRow(
               fonts,
               'المتبقي',
@@ -178,19 +231,22 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     final regular = await PdfGoogleFonts.tajawalRegular();
     final bold = await PdfGoogleFonts.tajawalBold();
     final fallback = await PdfGoogleFonts.notoSansArabicRegular();
-    return _InvoicePdfFonts(regular: regular, bold: bold, fallback: fallback);
+    return _InvoicePdfFonts(
+      regular: regular,
+      bold: bold,
+      fallback: fallback,
+    );
   }
 
   pw.TextStyle _pdfStyle(
     _InvoicePdfFonts fonts, {
     bool bold = false,
     double size = 10,
-  }) =>
-      pw.TextStyle(
-        font: bold ? fonts.bold : fonts.regular,
-        fontFallback: [fonts.fallback],
-        fontSize: size,
-      );
+  }) => pw.TextStyle(
+    font: bold ? fonts.bold : fonts.regular,
+    fontFallback: [fonts.fallback],
+    fontSize: size,
+  );
 
   pw.Widget _pdfRow(
     _InvoicePdfFonts fonts,
@@ -198,27 +254,25 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     String value, {
     bool bold = false,
     double size = 10,
-  }) =>
-      pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 3),
-        child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(label, style: _pdfStyle(fonts, bold: bold, size: size)),
-            pw.Text(value, style: _pdfStyle(fonts, bold: bold, size: size)),
-          ],
-        ),
-      );
+  }) => pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(vertical: 3),
+    child: pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: _pdfStyle(fonts, bold: bold, size: size)),
+        pw.Text(value, style: _pdfStyle(fonts, bold: bold, size: size)),
+      ],
+    ),
+  );
 
   pw.Widget _pdfCell(
     _InvoicePdfFonts fonts,
     String value, {
     bool bold = false,
-  }) =>
-      pw.Padding(
-        padding: const pw.EdgeInsets.all(6),
-        child: pw.Text(value, style: _pdfStyle(fonts, bold: bold, size: 9)),
-      );
+  }) => pw.Padding(
+    padding: const pw.EdgeInsets.all(6),
+    child: pw.Text(value, style: _pdfStyle(fonts, bold: bold, size: 9)),
+  );
 
   Future<void> sharePdf(Invoice invoice) async {
     setState(() => working = true);
@@ -233,7 +287,11 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
         ),
       );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر إنشاء أو مشاركة PDF: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إنشاء أو مشاركة PDF: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => working = false);
     }
@@ -243,9 +301,16 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     setState(() => working = true);
     try {
       final bytes = await buildPdf(invoice);
-      await Printing.layoutPdf(name: 'Market Plus Invoice ${invoice.id}', onLayout: (_) async => bytes);
+      await Printing.layoutPdf(
+        name: 'Market Plus Invoice ${invoice.id}',
+        onLayout: (_) async => bytes,
+      );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذرت الطباعة: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذرت الطباعة: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => working = false);
     }
@@ -261,15 +326,31 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('سيتم إلغاء الفاتورة وإرجاع أثر البيع إلى المخزون. هذه عملية إدارية موثقة.'),
+            const Text(
+              'سيتم إلغاء الفاتورة وإرجاع أثر البيع إلى المخزون. هذه عملية إدارية موثقة.',
+            ),
             const SizedBox(height: 12),
-            TextField(controller: reason, maxLength: 500, maxLines: 3, decoration: const InputDecoration(labelText: 'سبب الإلغاء', hintText: 'مثال: خطأ في عملية البيع')),
+            TextField(
+              controller: reason,
+              maxLength: 500,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'سبب الإلغاء',
+                hintText: 'مثال: خطأ في عملية البيع',
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('تراجع')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('تراجع'),
+          ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, reason.text.trim().length >= 3),
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              reason.text.trim().length >= 3,
+            ),
             child: const Text('تأكيد الإلغاء'),
           ),
         ],
@@ -281,12 +362,19 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
 
     setState(() => working = true);
     try {
-      await context.read<InvoiceRepository>().voidInvoice(invoice.id, reason: text);
+      await context.read<InvoiceRepository>().voidInvoice(
+            invoice.id,
+            reason: text,
+          );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إلغاء الفاتورة وتحديث المخزون.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إلغاء الفاتورة وتحديث المخزون.')),
+      );
       await reload();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
     } finally {
       if (mounted) setState(() => working = false);
     }
@@ -300,9 +388,20 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
       body: FutureBuilder<Invoice>(
         future: future,
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting && snap.data == null) return const Center(child: CircularProgressIndicator());
+          if (snap.connectionState == ConnectionState.waiting &&
+              snap.data == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           if (snap.hasError || snap.data == null) {
-            return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('تعذر تحميل الفاتورة\n${snap.error ?? ''}', textAlign: TextAlign.center)));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'تعذر تحميل الفاتورة\n${snap.error ?? ''}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
           final invoice = snap.data!;
           return RefreshIndicator(
@@ -321,14 +420,30 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    Expanded(child: OutlinedButton.icon(onPressed: working ? null : () => sharePdf(invoice), icon: const Icon(Icons.ios_share_rounded), label: const Text('PDF'))),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: working ? null : () => sharePdf(invoice),
+                        icon: const Icon(Icons.ios_share_rounded),
+                        label: const Text('PDF'),
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: OutlinedButton.icon(onPressed: working ? null : () => printPdf(invoice), icon: const Icon(Icons.print_outlined), label: const Text('طباعة'))),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: working ? null : () => printPdf(invoice),
+                        icon: const Icon(Icons.print_outlined),
+                        label: const Text('طباعة'),
+                      ),
+                    ),
                   ],
                 ),
                 if ((invoice.customerPhone ?? '').trim().isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  FilledButton.icon(onPressed: working ? null : () => sendWhatsApp(invoice), icon: const Icon(Icons.send_outlined), label: const Text('إرسال عبر واتساب')),
+                  FilledButton.icon(
+                    onPressed: working ? null : () => sendWhatsApp(invoice),
+                    icon: const Icon(Icons.send_outlined),
+                    label: const Text('إرسال عبر واتساب'),
+                  ),
                 ],
                 if (isAdmin && !invoice.isVoided) ...[
                   const SizedBox(height: 18),
@@ -337,19 +452,35 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
                   if (invoice.paymentType == 2 && invoice.paidAmount > 0)
                     Container(
                       padding: const EdgeInsets.all(11),
-                      decoration: BoxDecoration(color: ZColors.warningSurface, borderRadius: BorderRadius.circular(12)),
-                      child: const Text('لا يمكن إلغاء فاتورة آجلة استلمنا منها دفعة؛ يلزم مسار استرداد مالي مستقل.', style: TextStyle(fontSize: 11, color: ZColors.yellowText)),
+                      decoration: BoxDecoration(
+                        color: ZColors.warningSurface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'لا يمكن إلغاء فاتورة آجلة استلمنا منها دفعة؛ يلزم مسار استرداد مالي مستقل.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: ZColors.yellowText,
+                        ),
+                      ),
                     )
                   else
                     OutlinedButton.icon(
                       onPressed: working ? null : () => voidInvoice(invoice),
-                      style: OutlinedButton.styleFrom(foregroundColor: ZColors.danger, side: const BorderSide(color: ZColors.danger)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ZColors.danger,
+                        side: const BorderSide(color: ZColors.danger),
+                      ),
                       icon: const Icon(Icons.cancel_outlined),
                       label: const Text('إلغاء الفاتورة وإرجاع المخزون'),
                     ),
                 ],
                 const SizedBox(height: 10),
-                TextButton.icon(onPressed: () => context.go('/home'), icon: const Icon(Icons.home_outlined), label: const Text('العودة للرئيسية')),
+                TextButton.icon(
+                  onPressed: () => context.go('/home'),
+                  icon: const Icon(Icons.home_outlined),
+                  label: const Text('العودة للرئيسية'),
+                ),
               ],
             ),
           );
@@ -374,6 +505,7 @@ class _InvoicePdfFonts {
 class _InvoiceHero extends StatelessWidget {
   const _InvoiceHero({required this.invoice});
   final Invoice invoice;
+
   @override
   Widget build(BuildContext context) {
     final label = invoice.isVoided
@@ -383,25 +515,125 @@ class _InvoiceHero extends StatelessWidget {
             : invoice.isPartiallyPaid
                 ? 'مدفوعة جزئيًا'
                 : 'بانتظار السداد';
-    final tone = invoice.isVoided ? ZColors.danger : invoice.isPaid ? ZColors.success : ZColors.yellowText;
+    final tone = invoice.isVoided
+        ? ZColors.danger
+        : invoice.isPaid
+            ? ZColors.success
+            : ZColors.yellowText;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF1A3C34), ZColors.green]), boxShadow: ZShadow.float),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(width: 48, height: 48, decoration: BoxDecoration(color: ZColors.yellow, borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.receipt_long_rounded, color: ZColors.green)),
-          const SizedBox(width: 11),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('فاتورة ماركت بلس', style: TextStyle(fontSize: 11, color: Color(0xFFC5D7D2))), const SizedBox(height: 2), Directionality(textDirection: TextDirection.ltr, child: Text(invoice.number, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.left, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800)))])),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(99)), child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: tone))),
-        ]),
-        const SizedBox(height: 18),
-        const Text('الإجمالي', style: TextStyle(fontSize: 10.5, color: Color(0xFFC5D7D2))),
-        const SizedBox(height: 2),
-        Text('${invoice.total.toStringAsFixed(0)} ر.ي', style: const TextStyle(color: Colors.white, fontSize: 31, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 9),
-        Text(DateFormat('yyyy/MM/dd • HH:mm').format(invoice.createdAt.toLocal()), style: const TextStyle(fontSize: 10, color: Color(0xFFC5D7D2))),
-        if ((invoice.customerName ?? '').trim().isNotEmpty) ...[const SizedBox(height: 3), Text(invoice.customerName!, style: const TextStyle(color: ZColors.yellow, fontWeight: FontWeight.w800))],
-      ]),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [Color(0xFF1A3C34), ZColors.green],
+        ),
+        boxShadow: ZShadow.float,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: ZColors.yellow,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: ZColors.green,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'فاتورة ماركت بلس',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFC5D7D2),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Text(
+                        invoice.number,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    color: tone,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'الإجمالي',
+            style: TextStyle(fontSize: 10.5, color: Color(0xFFC5D7D2)),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${invoice.total.toStringAsFixed(0)} ر.ي',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 31,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            DateFormat(
+              'yyyy/MM/dd • HH:mm',
+            ).format(invoice.createdAt.toLocal()),
+            style: const TextStyle(
+              fontSize: 10,
+              color: Color(0xFFC5D7D2),
+            ),
+          ),
+          if ((invoice.customerName ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              invoice.customerName!,
+              style: const TextStyle(
+                color: ZColors.yellow,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -409,44 +641,144 @@ class _InvoiceHero extends StatelessWidget {
 class _ItemsCard extends StatelessWidget {
   const _ItemsCard({required this.invoice});
   final Invoice invoice;
+
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFFE5E8EE)), boxShadow: ZShadow.card),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.all(15),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(17),
+      border: Border.all(color: const Color(0xFFE5E8EE)),
+      boxShadow: ZShadow.card,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'تفاصيل الأصناف',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: ZColors.green,
+          ),
+        ),
+        const SizedBox(height: 10),
+        ...invoice.items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${item.quantity} × ${item.unitPrice.toStringAsFixed(0)} ر.ي',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: ZColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${item.total.toStringAsFixed(0)} ر.ي',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: ZColors.green,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 22),
+        Row(
           children: [
-            const Text('تفاصيل الأصناف', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: ZColors.green)),
-            const SizedBox(height: 10),
-            ...invoice.items.map((item) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              child: Row(children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 2), Text('${item.quantity} × ${item.unitPrice.toStringAsFixed(0)} ر.ي', style: const TextStyle(fontSize: 10, color: ZColors.muted))])),
-                Text('${item.total.toStringAsFixed(0)} ر.ي', style: const TextStyle(fontWeight: FontWeight.w900, color: ZColors.green)),
-              ]),
-            )),
-            const Divider(height: 22),
-            Row(children: [const Expanded(child: Text('الإجمالي', style: TextStyle(fontWeight: FontWeight.w900))), Text('${invoice.total.toStringAsFixed(0)} ر.ي', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: ZColors.green))]),
+            const Expanded(
+              child: Text(
+                'الإجمالي',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ),
+            Text(
+              '${invoice.total.toStringAsFixed(0)} ر.ي',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: ZColors.green,
+              ),
+            ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _DebtCard extends StatelessWidget {
   const _DebtCard({required this.invoice});
   final Invoice invoice;
+
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: ZColors.background, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E8EE))),
-        child: Column(children: [
-          Row(children: [const Expanded(child: Text('المدفوع', style: TextStyle(color: ZColors.muted))), Text('${invoice.paidAmount.toStringAsFixed(0)} ر.ي', style: const TextStyle(fontWeight: FontWeight.w900, color: ZColors.success))]),
-          const SizedBox(height: 8),
-          Row(children: [const Expanded(child: Text('المتبقي', style: TextStyle(color: ZColors.muted))), Text('${invoice.remainingAmount.toStringAsFixed(0)} ر.ي', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: ZColors.danger))]),
-          if (invoice.payments.isNotEmpty) ...[
-            const Divider(height: 22),
-            Align(alignment: AlignmentDirectional.centerStart, child: Text('${invoice.payments.length} دفعة مسجلة', style: const TextStyle(fontSize: 10.5, color: ZColors.subtle))),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: ZColors.background,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE5E8EE)),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text('المدفوع', style: TextStyle(color: ZColors.muted)),
+            ),
+            Text(
+              '${invoice.paidAmount.toStringAsFixed(0)} ر.ي',
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: ZColors.success,
+              ),
+            ),
           ],
-        ]),
-      );
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Expanded(
+              child: Text('المتبقي', style: TextStyle(color: ZColors.muted)),
+            ),
+            Text(
+              '${invoice.remainingAmount.toStringAsFixed(0)} ر.ي',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: ZColors.danger,
+              ),
+            ),
+          ],
+        ),
+        if (invoice.payments.isNotEmpty) ...[
+          const Divider(height: 22),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              '${invoice.payments.length} دفعة مسجلة',
+              style: const TextStyle(fontSize: 10.5, color: ZColors.subtle),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
 }
