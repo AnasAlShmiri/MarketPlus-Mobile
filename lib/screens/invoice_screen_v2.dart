@@ -77,11 +77,9 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     try {
       final phone = invoice.customerPhone;
       if (phone == null || phone.isEmpty) return;
+      final whatsAppRepository = context.read<WhatsAppRepository>();
       final renderedMessage = await message(invoice);
-      final url = await context.read<WhatsAppRepository>().buildLink(
-            phone,
-            renderedMessage,
-          );
+      final url = await whatsAppRepository.buildLink(phone, renderedMessage);
       final opened = await launchUrl(
         Uri.parse(url),
         mode: LaunchMode.externalApplication,
