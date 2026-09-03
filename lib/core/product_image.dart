@@ -73,7 +73,9 @@ class ProductImageCache {
 
   Future<void> evict(String url) async {
     final directory = await _directory();
-    final file = File('${directory.path}${Platform.pathSeparator}${cacheFileNameForUrl(url)}');
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}${cacheFileNameForUrl(url)}',
+    );
     if (await file.exists()) {
       try {
         await file.delete();
@@ -304,7 +306,9 @@ class ProductImage extends StatefulWidget {
 class _ProductImageState extends State<ProductImage> {
   String? _resolvedUrl;
   Future<File?>? _fileFuture;
+  ScrollPosition? _scrollPosition;
   bool _retriedCorruptFile = false;
+  bool _visibilityCheckScheduled = false;
 
   @override
   void initState() {
@@ -313,17 +317,80 @@ class _ProductImageState extends State<ProductImage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nextPosition = Scrollable.maybeOf(context)?.position;
+    if (!identical(nextPosition, _scrollPosition)) {
+      _scrollPosition?.isScrollingNotifier.removeListener(_onScrollActivity);
+      _scrollPosition = nextPosition;
+      _scrollPosition?.isScrollingNotifier.addListener(_onScrollActivity);
+    }
+    _scheduleVisibilityCheck();
+  }
+
+  @override
   void didUpdateWidget(covariant ProductImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl) _reload();
   }
 
+  @override
+  void dispose() {
+    _scrollPosition?.isScrollingNotifier.removeListener(_onScrollActivity);
+    super.dispose();
+  }
+
   void _reload() {
     _resolvedUrl = resolveProductImageUrl(widget.imageUrl);
     _retriedCorruptFile = false;
-    _fileFuture = _resolvedUrl == null
-        ? null
-        : ProductImageCache.instance.getFile(_resolvedUrl!);
+    _fileFuture = null;
+    _scheduleVisibilityCheck();
+  }
+
+  void _onScrollActivity() {
+    if (!(_scrollPosition?.isScrollingNotifier.value ?? false)) {
+      _scheduleVisibilityCheck();
+    }
+  }
+
+  void _scheduleVisibilityCheck() {
+    if (_visibilityCheckScheduled || _fileFuture != null || _resolvedUrl == null) {
+      return;
+    }
+    _visibilityCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _visibilityCheckScheduled = false;
+      if (mounted) _loadWhenNearViewport();
+    });
+  }
+
+  void _loadWhenNearViewport() {
+    final url = _resolvedUrl;
+    if (url == null || _fileFuture != null) return;
+
+    if (_scrollPosition == null) {
+      _startLoad(url);
+      return;
+    }
+
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached) return;
+
+    final top = renderObject.localToGlobal(Offset.zero).dy;
+    final bottom = top + renderObject.size.height;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final prefetchMargin = screenHeight * .35;
+
+    if (bottom >= -prefetchMargin && top <= screenHeight + prefetchMargin) {
+      _startLoad(url);
+    }
+  }
+
+  void _startLoad(String url) {
+    if (!mounted || _fileFuture != null) return;
+    setState(() {
+      _fileFuture = ProductImageCache.instance.getFile(url);
+    });
   }
 
   Widget _fallback() => Container(
