@@ -1,0 +1,92 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'core/app_theme.dart';
+import 'screens/app_shell.dart';
+import 'screens/checkout_screen.dart';
+import 'screens/customer_form_screen.dart';
+import 'screens/customers_screen.dart';
+import 'screens/customers_screen_v2.dart';
+import 'screens/debts_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/inventory_management_screen.dart';
+import 'screens/invoice_screen_v2.dart';
+import 'screens/login_screen.dart';
+import 'screens/offline_sync_screen.dart';
+import 'screens/products_screen.dart';
+import 'screens/reports_screen.dart';
+import 'screens/sale_screen.dart';
+import 'screens/sales_history_screen.dart';
+import 'screens/settings_screen.dart';
+import 'state/app_session.dart';
+
+class ZimmatiApp extends StatefulWidget {
+  const ZimmatiApp({super.key, required this.session});
+  final AppSession session;
+  @override
+  State<ZimmatiApp> createState() => _ZimmatiAppState();
+}
+
+class _ZimmatiAppState extends State<ZimmatiApp> {
+  late final GoRouter router = GoRouter(
+    initialLocation: '/login',
+    refreshListenable: widget.session,
+    redirect: (context, state) {
+      final onLogin = state.matchedLocation == '/login';
+      if (!widget.session.authenticated && !onLogin) return '/login';
+      if (widget.session.authenticated && onLogin) return '/home';
+      return null;
+    },
+    routes: [
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      ShellRoute(
+        builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
+        routes: [
+          GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+          GoRoute(path: '/sale', builder: (_, __) => const SaleScreen()),
+          GoRoute(path: '/products', builder: (_, __) => const ProductsScreen()),
+          GoRoute(path: '/customers', builder: (_, __) => const CustomersScreenV2()),
+          GoRoute(path: '/debts', builder: (_, __) => const DebtsScreen()),
+          GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+        ],
+      ),
+      GoRoute(path: '/cart', builder: (_, __) => const CheckoutScreen()),
+      GoRoute(path: '/sales', builder: (_, __) => const SalesHistoryScreen()),
+      GoRoute(path: '/reports', builder: (_, __) => const ReportsScreen()),
+      GoRoute(path: '/inventory', builder: (_, __) => const InventoryManagementScreen()),
+      GoRoute(path: '/sync', builder: (_, __) => const OfflineSyncScreen()),
+      GoRoute(path: '/customer/new', builder: (_, __) => const CustomerFormScreen()),
+      GoRoute(
+        path: '/customer/:phone/edit',
+        builder: (context, state) => CustomerFormScreen(
+          existingPhone: Uri.decodeComponent(state.pathParameters['phone'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/customer/:phone',
+        builder: (context, state) => CustomerDetailsScreen(
+          phone: Uri.decodeComponent(state.pathParameters['phone'] ?? ''),
+        ),
+      ),
+      GoRoute(
+        path: '/invoice/:id',
+        builder: (context, state) => InvoiceScreenV2(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0),
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        title: 'ماركت بلس',
+        theme: buildZimmatiTheme(),
+        locale: const Locale('ar'),
+        supportedLocales: const [Locale('ar')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        routerConfig: router,
+      );
+}

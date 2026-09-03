@@ -1,0 +1,53 @@
+# Dart / Flutter generated files
+.dart_tool/
+.packages
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+coverage/
+
+# IDE / editor local state
+.idea/
+*.iml
+.vscode/
+
+# Android local/generated state
+android/.gradle/
+android/.kotlin/
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+
+# iOS/macOS generated state
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/.symlinks/
+ios/Pods/
+ios/Runner/GeneratedPluginRegistrant.*
+macos/Flutter/ephemeral/
+macos/Pods/
+
+# Signing material and secrets (must never be committed)
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.mobileprovision
+key.properties
+android/key.properties
+
+# The repository-root .gitignore is a Visual Studio template whose "[Dd]ebug/"
+# and "[Rr]elease/" build-output rules also swallow Flutter's Android build-type
+# source directories. Re-include them so the debug manifest (local cleartext
+# HTTP for http://10.0.2.2:5000) is actually tracked.
+!android/app/src/debug/
+!android/app/src/debug/**
+!android/app/src/release/
+!android/app/src/release/**
+
+# Keep project platform sources and lock metadata tracked intentionally:
+# android/
+# ios/
+# pubspec.lock
+# .metadata
