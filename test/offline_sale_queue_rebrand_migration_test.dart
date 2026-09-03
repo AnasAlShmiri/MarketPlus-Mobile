@@ -1,11 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:marketplus_mobile/core/api_client.dart';
+import 'package:marketplus_mobile/data/repositories.dart';
+import 'package:marketplus_mobile/state/offline_sale_queue.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../lib/core/api_client.dart';
-import '../lib/data/repositories.dart';
-import '../lib/state/offline_sale_queue.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -66,8 +65,10 @@ void main() {
     await queue.hydrate();
 
     expect(queue.pendingCount, 1);
-    expect(queue.items.single.clientRequestId,
-        'mob-11111111-1111-4111-8111-111111111111');
+    expect(
+      queue.items.single.clientRequestId,
+      'mob-11111111-1111-4111-8111-111111111111',
+    );
     expect(queue.items.single.total, 3000.0);
     expect(
       preferences.getStringList('marketplus.pending-sales.v1'),
