@@ -29,10 +29,8 @@ Future<void> main() async {
   await offlineQueue.hydrate();
 
   final session = AppSession(auth, catalog);
-  await session.restoreSession();
-  if (session.authenticated && offlineQueue.hasPending) {
-    unawaited(offlineQueue.syncAll());
-  }
+  final startupFuture = session.restoreSession();
+  unawaited(_syncPendingSalesAfterStartup(startupFuture, session, offlineQueue));
 
   runApp(
     MultiProvider(
@@ -49,7 +47,26 @@ Future<void> main() async {
         ChangeNotifierProvider.value(value: offlineQueue),
         ChangeNotifierProvider.value(value: session),
       ],
-      child: MarketPlusApp(session: session, preferences: preferences),
+      child: MarketPlusApp(
+        session: session,
+        preferences: preferences,
+        startupFuture: startupFuture,
+      ),
     ),
   );
+}
+
+Future<void> _syncPendingSalesAfterStartup(
+  Future<void> startupFuture,
+  AppSession session,
+  OfflineSaleQueue offlineQueue,
+) async {
+  try {
+    await startupFuture;
+    if (session.authenticated && offlineQueue.hasPending) {
+      await offlineQueue.syncAll();
+    }
+  } catch (error) {
+    debugPrint('[Startup] pending offline sync failed: $error');
+  }
 }
