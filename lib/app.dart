@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/app_theme.dart';
+import 'core/onboarding_preferences.dart';
 import 'screens/app_shell.dart';
 import 'screens/checkout_screen.dart';
 import 'screens/customer_form_screen.dart';
@@ -13,34 +15,65 @@ import 'screens/inventory_management_screen.dart';
 import 'screens/invoice_screen_v2.dart';
 import 'screens/login_screen.dart';
 import 'screens/offline_sync_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/sale_screen.dart';
 import 'screens/sales_history_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/splash_screen.dart';
 import 'state/app_session.dart';
 
 class MarketPlusApp extends StatefulWidget {
-  const MarketPlusApp({super.key, required this.session});
+  const MarketPlusApp({
+    super.key,
+    required this.session,
+    required this.preferences,
+  });
+
   final AppSession session;
+  final SharedPreferences preferences;
+
   @override
   State<MarketPlusApp> createState() => _MarketPlusAppState();
 }
 
 class _MarketPlusAppState extends State<MarketPlusApp> {
+  late final OnboardingPreferences onboardingPreferences =
+      OnboardingPreferences(widget.preferences);
+
   late final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     refreshListenable: widget.session,
     redirect: (context, state) {
-      final onLogin = state.matchedLocation == '/login';
+      final location = state.matchedLocation;
+      final isStartup = location == '/splash' || location == '/onboarding';
+      if (isStartup) return null;
+
+      final onLogin = location == '/login';
       if (!widget.session.authenticated && !onLogin) return '/login';
       if (widget.session.authenticated && onLogin) return '/home';
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (_, __) => SplashScreen(
+          onboardingCompleted: onboardingPreferences.isCompleted,
+          authenticated: widget.session.authenticated,
+        ),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, __) => OnboardingScreen(
+          preferences: onboardingPreferences,
+          authenticated: widget.session.authenticated,
+        ),
+      ),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       ShellRoute(
-        builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
+        builder: (context, state, child) =>
+            AppShell(location: state.uri.path, child: child),
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/sale', builder: (_, __) => const SaleScreen()),
@@ -70,7 +103,9 @@ class _MarketPlusAppState extends State<MarketPlusApp> {
       ),
       GoRoute(
         path: '/invoice/:id',
-        builder: (context, state) => InvoiceScreenV2(id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0),
+        builder: (context, state) => InvoiceScreenV2(
+          id: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
       ),
     ],
   );
