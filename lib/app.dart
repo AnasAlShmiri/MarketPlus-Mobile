@@ -29,10 +29,12 @@ class MarketPlusApp extends StatefulWidget {
     super.key,
     required this.session,
     required this.preferences,
+    required this.startupFuture,
   });
 
   final AppSession session;
   final SharedPreferences preferences;
+  final Future<void> startupFuture;
 
   @override
   State<MarketPlusApp> createState() => _MarketPlusAppState();
@@ -60,7 +62,8 @@ class _MarketPlusAppState extends State<MarketPlusApp> {
         path: '/splash',
         builder: (_, __) => SplashScreen(
           onboardingCompleted: onboardingPreferences.isCompleted,
-          authenticated: widget.session.authenticated,
+          session: widget.session,
+          startupFuture: widget.startupFuture,
         ),
       ),
       GoRoute(
