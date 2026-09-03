@@ -35,13 +35,13 @@ void main() {
   });
 
   test('rejects blank and oversized templates', () {
+    final oversized = List<String>.filled(
+      WhatsAppMessageTemplate.maxLength + 1,
+      'x',
+    ).join();
+
     expect(WhatsAppMessageTemplate.validate('   '), isNotNull);
-    expect(
-      WhatsAppMessageTemplate.validate(
-        'x' * (WhatsAppMessageTemplate.maxLength + 1),
-      ),
-      isNotNull,
-    );
+    expect(WhatsAppMessageTemplate.validate(oversized), isNotNull);
   });
 
   test('reset restores the default template', () async {
