@@ -9,6 +9,11 @@ import 'package:path_provider/path_provider.dart';
 import 'app_theme.dart';
 
 typedef ProductImageCacheDirectoryProvider = Future<Directory> Function();
+typedef ProductImageDownload = Future<File> Function(
+  Uri uri,
+  File target,
+  int maxFileBytes,
+);
 
 enum ProductImageProfile { thumbnail, detail }
 
@@ -21,13 +26,15 @@ class ProductImageCache {
   ProductImageCache({
     ProductImageCacheDirectoryProvider? cacheDirectoryProvider,
     HttpClient? httpClient,
+    ProductImageDownload? downloadOverride,
     this.maxConcurrentDownloads = 2,
     this.maxFileBytes = 6 * 1024 * 1024,
     this.maxCacheBytes = 160 * 1024 * 1024,
     this.maxCacheEntries = 500,
   })  : _cacheDirectoryProvider =
             cacheDirectoryProvider ?? _defaultCacheDirectory,
-        _httpClient = httpClient ?? HttpClient() {
+        _downloadOverride = downloadOverride,
+        _httpClient = httpClient ?? (downloadOverride == null ? HttpClient() : null) {
     if (maxConcurrentDownloads < 1) {
       throw ArgumentError.value(
         maxConcurrentDownloads,
@@ -35,14 +42,18 @@ class ProductImageCache {
         'must be at least 1',
       );
     }
-    _httpClient.connectionTimeout = const Duration(seconds: 5);
-    _httpClient.idleTimeout = const Duration(seconds: 15);
+    final client = _httpClient;
+    if (client != null) {
+      client.connectionTimeout = const Duration(seconds: 5);
+      client.idleTimeout = const Duration(seconds: 15);
+    }
   }
 
   static final ProductImageCache instance = ProductImageCache();
 
   final ProductImageCacheDirectoryProvider _cacheDirectoryProvider;
-  final HttpClient _httpClient;
+  final ProductImageDownload? _downloadOverride;
+  final HttpClient? _httpClient;
   final int maxConcurrentDownloads;
   final int maxFileBytes;
   final int maxCacheBytes;
@@ -111,9 +122,12 @@ class ProductImageCache {
     }
 
     try {
-      final downloaded = await _withDownloadPermit(
-        () => _download(uri, target),
-      );
+      final downloaded = await _withDownloadPermit(() {
+        final override = _downloadOverride;
+        return override == null
+            ? _download(uri, target)
+            : override(uri, target, maxFileBytes);
+      });
       unawaited(_trimCache(directory, protectedPath: downloaded.path));
       return downloaded;
     } catch (_) {
@@ -122,7 +136,12 @@ class ProductImageCache {
   }
 
   Future<File> _download(Uri uri, File target) async {
-    final request = await _httpClient.getUrl(uri).timeout(
+    final client = _httpClient;
+    if (client == null) {
+      throw StateError('No HTTP client configured for product image download.');
+    }
+
+    final request = await client.getUrl(uri).timeout(
           const Duration(seconds: 6),
         );
     request.headers.set(
@@ -271,7 +290,7 @@ class ProductImageCache {
   }
 
   void dispose() {
-    _httpClient.close(force: true);
+    _httpClient?.close(force: true);
   }
 
   static Future<Directory> _defaultCacheDirectory() => getTemporaryDirectory();
@@ -468,8 +487,8 @@ String? resolveProductImageUrl(String? raw) {
   if (value == null || value.isEmpty) return null;
 
   final parsed = Uri.tryParse(value);
-  if (parsed != null && (parsed.scheme == 'http' || parsed.scheme == 'https')) {
-    return value;
+  if (parsed != null && parsed.hasScheme) {
+    return parsed.scheme == 'http' || parsed.scheme == 'https' ? value : null;
   }
 
   const base = String.fromEnvironment(
@@ -477,10 +496,17 @@ String? resolveProductImageUrl(String? raw) {
     defaultValue: 'http://10.0.2.2:5000',
   );
   final baseUri = Uri.tryParse(base);
-  if (baseUri == null || !baseUri.hasScheme) return null;
+  if (baseUri == null ||
+      !baseUri.hasScheme ||
+      (baseUri.scheme != 'http' && baseUri.scheme != 'https')) {
+    return null;
+  }
 
   try {
-    return baseUri.resolve(value).toString();
+    final resolved = baseUri.resolve(value);
+    return resolved.scheme == 'http' || resolved.scheme == 'https'
+        ? resolved.toString()
+        : null;
   } catch (_) {
     return null;
   }
