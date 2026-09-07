@@ -6,9 +6,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('Arabic invoice font stack builds an RTL PDF', () async {
-    final regular = await PdfGoogleFonts.tajawalRegular();
-    final bold = await PdfGoogleFonts.tajawalBold();
-    final fallback = await PdfGoogleFonts.notoSansArabicRegular();
+    final regular = await PdfGoogleFonts.notoNaskhArabicRegular();
+    final bold = await PdfGoogleFonts.notoNaskhArabicBold();
+    final fallback = await PdfGoogleFonts.notoSansRegular();
 
     final document = pw.Document(
       theme: pw.ThemeData.withFont(
@@ -26,6 +26,7 @@ void main() {
             children: [
               pw.Text(
                 'ماركت بلس | Market Plus',
+                textDirection: pw.TextDirection.rtl,
                 style: pw.TextStyle(
                   font: bold,
                   fontFallback: [fallback],
@@ -34,6 +35,16 @@ void main() {
               ),
               pw.Text(
                 'فاتورة بيع - الإجمالي 100 ر.ي',
+                textDirection: pw.TextDirection.rtl,
+                style: pw.TextStyle(
+                  font: regular,
+                  fontFallback: [fallback],
+                  fontSize: 12,
+                ),
+              ),
+              pw.Text(
+                'العميل: محمد عبدالله - المنتج: ماء شملان - المتبقي: ٢٥٠ ر.ي',
+                textDirection: pw.TextDirection.rtl,
                 style: pw.TextStyle(
                   font: regular,
                   fontFallback: [fallback],
