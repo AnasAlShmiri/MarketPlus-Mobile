@@ -118,10 +118,15 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
           children: [
             pw.Text(
               'ماركت بلس | Market Plus',
+              textDirection: pw.TextDirection.rtl,
               style: _pdfStyle(fonts, bold: true, size: 22),
             ),
             pw.SizedBox(height: 4),
-            pw.Text('فاتورة بيع', style: _pdfStyle(fonts, size: 12)),
+            pw.Text(
+              'فاتورة بيع',
+              textDirection: pw.TextDirection.rtl,
+              style: _pdfStyle(fonts, size: 12),
+            ),
             pw.Divider(),
           ],
         ),
@@ -129,7 +134,11 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('رقم الفاتورة', style: _pdfStyle(fonts)),
+              pw.Text(
+                'رقم الفاتورة',
+                textDirection: pw.TextDirection.rtl,
+                style: _pdfStyle(fonts),
+              ),
               pw.Directionality(
                 textDirection: pw.TextDirection.ltr,
                 child: pw.Text(
@@ -214,6 +223,7 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
           pw.Center(
             child: pw.Text(
               'شكرًا لتعاملكم معنا',
+              textDirection: pw.TextDirection.rtl,
               style: _pdfStyle(fonts, size: 10),
             ),
           ),
@@ -224,11 +234,14 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
   }
 
   Future<_InvoicePdfFonts> _loadPdfFonts() async {
-    // Default PDF fonts do not contain Arabic glyphs. Use an Arabic-capable
-    // primary font plus an explicit Arabic fallback on every PDF text style.
-    final regular = await PdfGoogleFonts.tajawalRegular();
-    final bold = await PdfGoogleFonts.tajawalBold();
-    final fallback = await PdfGoogleFonts.notoSansArabicRegular();
+    // Keep Arabic as the primary font. dart_pdf can render Arabic incorrectly
+    // when an Arabic font is reached only through fontFallback, and Tajawal has
+    // narrower glyph coverage than Noto Naskh Arabic for invoice/user content.
+    final regular = await PdfGoogleFonts.notoNaskhArabicRegular();
+    final bold = await PdfGoogleFonts.notoNaskhArabicBold();
+    // Latin fallback is intentionally non-Arabic so Arabic never falls through
+    // to a second Arabic font with different shaping/coverage.
+    final fallback = await PdfGoogleFonts.notoSansRegular();
     return _InvoicePdfFonts(
       regular: regular,
       bold: bold,
@@ -246,6 +259,13 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     fontSize: size,
   );
 
+  pw.TextDirection _pdfDirection(String value) {
+    final hasArabic = RegExp(
+      r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]',
+    ).hasMatch(value);
+    return hasArabic ? pw.TextDirection.rtl : pw.TextDirection.ltr;
+  }
+
   pw.Widget _pdfRow(
     _InvoicePdfFonts fonts,
     String label,
@@ -257,8 +277,16 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     child: pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Text(label, style: _pdfStyle(fonts, bold: bold, size: size)),
-        pw.Text(value, style: _pdfStyle(fonts, bold: bold, size: size)),
+        pw.Text(
+          label,
+          textDirection: _pdfDirection(label),
+          style: _pdfStyle(fonts, bold: bold, size: size),
+        ),
+        pw.Text(
+          value,
+          textDirection: _pdfDirection(value),
+          style: _pdfStyle(fonts, bold: bold, size: size),
+        ),
       ],
     ),
   );
@@ -269,7 +297,11 @@ class _InvoiceScreenV2State extends State<InvoiceScreenV2> {
     bool bold = false,
   }) => pw.Padding(
     padding: const pw.EdgeInsets.all(6),
-    child: pw.Text(value, style: _pdfStyle(fonts, bold: bold, size: 9)),
+    child: pw.Text(
+      value,
+      textDirection: _pdfDirection(value),
+      style: _pdfStyle(fonts, bold: bold, size: 9),
+    ),
   );
 
   Future<void> sharePdf(Invoice invoice) async {
